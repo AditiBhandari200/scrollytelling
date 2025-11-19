@@ -18,7 +18,7 @@ import { useInView } from "react-intersection-observer";
  * Notes: tweak colors, positions and counts to match your brand.
  */
 
-type StepId = 0 | 1 | 2 | 3;
+type StepId = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 
 export default function CoherenceScrolly() {
   const [active, setActive] = useState<StepId>(0);
@@ -28,14 +28,20 @@ export default function CoherenceScrolly() {
   const [refDrift, inViewDrift] = useInView({ threshold: 0.6 });
   const [refCode, inViewCode] = useInView({ threshold: 0.6 });
   const [refBridge, inViewBridge] = useInView({ threshold: 0.6 });
+  const [refStep4, inViewStep4] = useInView({ threshold: 0.6 });
+  const [refStep5, inViewStep5] = useInView({ threshold: 0.6 });
+  const [refStep6, inViewStep6] = useInView({ threshold: 0.6 });
 
   // flip active depending on which block is in view (priority: bottom-most visible)
   React.useEffect(() => {
-    if (inViewBridge) setActive(3);
+    if (inViewStep6) setActive(6);
+    else if (inViewStep5) setActive(5);
+    else if (inViewStep4) setActive(4);
+    else if (inViewBridge) setActive(3);
     else if (inViewCode) setActive(2);
     else if (inViewDrift) setActive(1);
     else if (inViewHero) setActive(0);
-  }, [inViewHero, inViewDrift, inViewCode, inViewBridge]);
+  }, [inViewHero, inViewDrift, inViewCode, inViewBridge, inViewStep4, inViewStep5, inViewStep6]);
 
   return (
     <main className="min-h-screen bg-white text-neutral-900">
@@ -50,7 +56,7 @@ export default function CoherenceScrolly() {
           <h1 className="text-4xl md:text-6xl font-extrabold leading-tight">
             Lorem ipsum dolor sit amet consectetur
           </h1>
-          <p className="mt-4 text-lg text-neutral-300">
+          <p className="mt-4 text-lg text-neutral-700">
             Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua quis nostrud exercitation.
           </p>
         </div>
@@ -79,6 +85,27 @@ export default function CoherenceScrolly() {
               consequatur vel illum dolore.
             </StepCard>
           </div>
+
+          <div ref={refStep4} className="min-h-[40vh] flex items-center">
+            <StepCard title="Adipiscing elit sed" index={4}>
+              Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit. Sed quia consequuntur
+              magni dolores eos qui ratione voluptatem sequi nesciunt.
+            </StepCard>
+          </div>
+
+          <div ref={refStep5} className="min-h-[40vh] flex items-center">
+            <StepCard title="Neque porro quisquam" index={5}>
+              At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis praesentium voluptatum
+              deleniti atque corrupti quos dolores et quas molestias excepturi.
+            </StepCard>
+          </div>
+
+          <div ref={refStep6} className="min-h-[40vh] flex items-center">
+            <StepCard title="Sint occaecati cupiditate" index={6}>
+              Temporibus autem quibusdam et aut officiis debitis aut rerum necessitatibus saepe eveniet ut et
+              voluptates repudiandae sint et molestiae non recusandae.
+            </StepCard>
+          </div>
         </div>
 
         {/* Right column placeholder to preserve layout on wide screens (visual is sticky in the hero) */}
@@ -97,12 +124,12 @@ export default function CoherenceScrolly() {
 /* ---------- Step card ---------- */
 function StepCard({ title, children, index }: { title: string; children: React.ReactNode; index: number }) {
   return (
-    <article className="bg-neutral-850/60 backdrop-blur-sm p-8 rounded-2xl shadow-lg border border-white/5">
+    <article className="bg-neutral-100/80 backdrop-blur-sm p-8 rounded-2xl shadow-lg border border-neutral-300/50">
       <h3 className="text-2xl font-bold mb-3">
-        <span className="mr-3 text-fuchsia-400">0{index}</span>
+        <span className="mr-3 text-fuchsia-500">0{index}</span>
         {title}
       </h3>
-      <div className="text-neutral-300">{children}</div>
+      <div className="text-neutral-700">{children}</div>
     </article>
   );
 }
@@ -143,6 +170,9 @@ function StickyVisual({ active }: { active: StepId }) {
   const activeIsDrifting = active === 1;
   const activeIsCoding = active === 2;
   const activeIsBridging = active === 3;
+  const activeIsStep4 = active === 4;
+  const activeIsStep5 = active === 5;
+  const activeIsStep6 = active === 6;
   
   // Center point for outward movement
   const centerX = 0.5;
@@ -154,8 +184,8 @@ function StickyVisual({ active }: { active: StepId }) {
         {/* soft background glow */}
         <defs>
           <radialGradient id="g" cx="50%" cy="45%">
-            <stop offset="0%" stopColor="#8b5cf6" stopOpacity={activeIsBridging ? 0.14 : 0.08} />
-            <stop offset="60%" stopColor="#06b6d4" stopOpacity={activeIsBridging ? 0.06 : 0.02} />
+            <stop offset="0%" stopColor="#8b5cf6" stopOpacity={activeIsBridging || activeIsStep4 || activeIsStep5 || activeIsStep6 ? 0.14 : 0.08} />
+            <stop offset="60%" stopColor="#06b6d4" stopOpacity={activeIsBridging || activeIsStep4 || activeIsStep5 || activeIsStep6 ? 0.06 : 0.02} />
             <stop offset="100%" stopColor="#000000" stopOpacity={0} />
           </radialGradient>
           <filter id="blur" x="-50%" width="200%" y="-50%" height="200%">
@@ -169,7 +199,7 @@ function StickyVisual({ active }: { active: StepId }) {
         {/* lines (draw when bridging) */}
         <g>
           <AnimatePresence>
-            {activeIsBridging &&
+            {(activeIsBridging || activeIsStep4 || activeIsStep5 || activeIsStep6) &&
               base.map((p1, i) =>
                 base.map((p2, j) => {
                   if (j <= i) return null;
@@ -203,7 +233,7 @@ function StickyVisual({ active }: { active: StepId }) {
         </g>
 
         {/* dots */}
-        <g filter={activeIsBridging ? "url(#blur)" : undefined}>
+        <g filter={activeIsBridging || activeIsStep4 || activeIsStep5 || activeIsStep6 ? "url(#blur)" : undefined}>
           {base.map((p, i) => {
             const cx = p[0] * w;
             const cy = p[1] * h;
@@ -216,7 +246,7 @@ function StickyVisual({ active }: { active: StepId }) {
             const normalizedY = distance > 0 ? vectorY / distance : 0;
             
             // Apply outward movement when drifting, keep position in coding step
-            const driftDistance = activeIsDrifting || activeIsCoding ? 80 : 0;
+            const driftDistance = activeIsDrifting || activeIsCoding || activeIsStep4 || activeIsStep5 || activeIsStep6 ? 80 : 0;
             const dx = normalizedX * driftDistance;
             const dy = normalizedY * driftDistance;
             const finalX = cx + dx;
@@ -224,8 +254,8 @@ function StickyVisual({ active }: { active: StepId }) {
 
             // flicker variations - random delay per dot for staggered effect
             const flickerDelay = i * 0.08;
-            const baseOpacity = active === 0 ? 1 : activeIsDrifting ? 0.6 : activeIsCoding ? 1 : 0.95;
-            const scale = active === 0 ? 1.15 : activeIsDrifting ? 0.85 : activeIsCoding ? 1.2 : 1.1;
+            const baseOpacity = active === 0 ? 1 : activeIsDrifting ? 0.6 : activeIsCoding ? 1 : activeIsStep4 ? 0.8 : activeIsStep5 ? 0.9 : activeIsStep6 ? 0.95 : 0.95;
+            const scale = active === 0 ? 1.15 : activeIsDrifting ? 0.85 : activeIsCoding ? 1.2 : activeIsStep4 ? 1.0 : activeIsStep5 ? 1.05 : activeIsStep6 ? 1.1 : 1.1;
 
             return (
               <motion.g
@@ -251,8 +281,8 @@ function StickyVisual({ active }: { active: StepId }) {
                   r={14}
                   fill="none"
                   stroke="#8b5cf6"
-                  strokeOpacity={active === 0 ? 0.2 : activeIsBridging ? 0.16 : 0.06}
-                  strokeWidth={active === 0 ? 12 : activeIsBridging ? 18 : 8}
+                  strokeOpacity={active === 0 ? 0.2 : activeIsBridging ? 0.16 : activeIsStep4 || activeIsStep5 || activeIsStep6 ? 0.12 : 0.06}
+                  strokeWidth={active === 0 ? 12 : activeIsBridging ? 18 : activeIsStep4 || activeIsStep5 || activeIsStep6 ? 10 : 8}
                   animate={
                     activeIsDrifting
                       ? { 
@@ -262,12 +292,17 @@ function StickyVisual({ active }: { active: StepId }) {
                       ? {
                           strokeOpacity: [0.06, 0.01, 0.06, 0.02, 0.06, 0.01, 0.18],
                         }
+                      : activeIsStep4 || activeIsStep5 || activeIsStep6
+                      ? {
+                          strokeOpacity: [0.12, 0.08, 0.14, 0.06, 0.12],
+                        }
                       : {}
                   }
                   transition={{
-                    duration: activeIsDrifting || activeIsCoding ? 1.8 : 1.2,
-                    repeat: 0,
-                    delay: activeIsDrifting || activeIsCoding ? flickerDelay : 0,
+                    duration: activeIsDrifting || activeIsCoding || activeIsStep4 || activeIsStep5 || activeIsStep6 ? 1.8 : 1.2,
+                    repeat: activeIsStep4 || activeIsStep5 || activeIsStep6 ? Infinity : 0,
+                    repeatType: "loop",
+                    delay: activeIsDrifting || activeIsCoding || activeIsStep4 || activeIsStep5 || activeIsStep6 ? flickerDelay : 0,
                     ease: [0.45, 0.05, 0.55, 0.95],
                   }}
                 />
@@ -292,11 +327,17 @@ function StickyVisual({ active }: { active: StepId }) {
                         }
                       : activeIsBridging
                       ? { opacity: [0.9, 1, 0.95], scale: [1.05, 1.18, 1.06] }
+                      : activeIsStep4
+                      ? { opacity: [0.8, 1, 0.9], scale: [1.0, 1.15, 1.05] }
+                      : activeIsStep5
+                      ? { opacity: [0.85, 1, 0.92], scale: [1.05, 1.2, 1.08] }
+                      : activeIsStep6
+                      ? { opacity: [0.9, 1, 0.95], scale: [1.1, 1.25, 1.12] }
                       : { opacity: 1, scale: 1.02 }
                   }
                   transition={{
                     duration: activeIsDrifting || activeIsCoding ? 1.8 : 1.2,
-                    repeat: activeIsDrifting || activeIsCoding ? 0 : activeIsBridging ? Infinity : 0,
+                    repeat: activeIsDrifting || activeIsCoding ? 0 : activeIsBridging || activeIsStep4 || activeIsStep5 || activeIsStep6 ? Infinity : 0,
                     repeatType: "loop",
                     delay: activeIsDrifting || activeIsCoding ? flickerDelay : i * 0.05,
                     ease: activeIsDrifting || activeIsCoding ? [0.45, 0.05, 0.55, 0.95] : "easeInOut",
