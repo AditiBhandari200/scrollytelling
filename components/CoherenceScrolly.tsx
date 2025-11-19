@@ -38,7 +38,7 @@ export default function CoherenceScrolly() {
   }, [inViewHero, inViewDrift, inViewCode, inViewBridge]);
 
   return (
-    <main className="min-h-screen bg-neutral-900 text-neutral-100">
+    <main className="min-h-screen bg-white text-neutral-900">
       {/* HERO */}
       <section ref={refHero} className="relative min-h-screen grid place-items-center">
         <div className="absolute inset-0">
