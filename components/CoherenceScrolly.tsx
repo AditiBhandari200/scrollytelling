@@ -1,10 +1,8 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef } from "react";
 
-import { motion, AnimatePresence } from "framer-motion";
-
-import { useInView } from "react-intersection-observer";
+import { motion, useScroll, useTransform } from "framer-motion";
 
 /**
  * Coherence Scrollytelling - single file component
@@ -12,99 +10,59 @@ import { useInView } from "react-intersection-observer";
  * Usage: place <CoherenceScrolly /> inside a Next page.
  *
  * Technique:
- * - Left column: step text blocks which toggle "active" using intersection observer
- * - Right column: sticky SVG visual that updates based on activeStep
+ * - Scroll-scrubbable animations that respond directly to scroll position
+ * - Sticky SVG visual that updates based on scroll progress
  *
  * Notes: tweak colors, positions and counts to match your brand.
  */
 
-type StepId = 0 | 1 | 2 | 3 | 4 | 5 | 6;
-
 export default function CoherenceScrolly() {
-  const [active, setActive] = useState<StepId>(0);
+  const containerRef = useRef<HTMLElement>(null);
+  const driftRef = useRef<HTMLDivElement>(null);
+  const codeRef = useRef<HTMLDivElement>(null);
+  const bridgeRef = useRef<HTMLDivElement>(null);
 
-  // Step refs (we use one observer per step)
-  const [refHero, inViewHero] = useInView({ threshold: 0.6 });
-  const [refDrift, inViewDrift] = useInView({ threshold: 0.6 });
-  const [refCode, inViewCode] = useInView({ threshold: 0.6 });
-  const [refBridge, inViewBridge] = useInView({ threshold: 0.6 });
-  const [refStep4, inViewStep4] = useInView({ threshold: 0.6 });
-  const [refStep5, inViewStep5] = useInView({ threshold: 0.6 });
-  const [refStep6, inViewStep6] = useInView({ threshold: 0.6 });
+  // Track scroll progress through the entire container
+  const { scrollYProgress } = useScroll({
+    target: containerRef,
+    offset: ["start start", "end end"],
+  });
 
-  // flip active depending on which block is in view (priority: bottom-most visible)
-  React.useEffect(() => {
-    if (inViewStep6) setActive(6);
-    else if (inViewStep5) setActive(5);
-    else if (inViewStep4) setActive(4);
-    else if (inViewBridge) setActive(3);
-    else if (inViewCode) setActive(2);
-    else if (inViewDrift) setActive(1);
-    else if (inViewHero) setActive(0);
-  }, [inViewHero, inViewDrift, inViewCode, inViewBridge, inViewStep4, inViewStep5, inViewStep6]);
+  // Calculate progress for each section (0-1)
+  // Section 1 (Drift): 0-0.33, Section 2 (Code): 0.33-0.66, Section 3 (Bridge): 0.66-1.0
+  const driftProgress = useTransform(scrollYProgress, [0, 0.33], [0, 1], { clamp: true });
+  const codeProgress = useTransform(scrollYProgress, [0.33, 0.66], [0, 1], { clamp: true });
+  const bridgeProgress = useTransform(scrollYProgress, [0.66, 1], [0, 1], { clamp: true });
+
+  // Determine which section is active based on scroll
+  const activeSection = useTransform(scrollYProgress, (progress) => {
+    if (progress < 0.33) return 1; // Drift
+    if (progress < 0.66) return 2; // Code
+    return 3; // Bridge
+  });
 
   return (
-    <main className="min-h-screen bg-white text-neutral-900">
-      {/* HERO */}
-      <section ref={refHero} className="relative min-h-screen grid place-items-center">
-        <div className="absolute inset-0">
-          {/* sticky visual sits here */}
-          <StickyVisual active={active} />
-        </div>
-
-        <div className="relative z-10 max-w-3xl text-center px-6">
-          <h1 className="text-4xl md:text-6xl font-extrabold leading-tight">
-            Lorem ipsum dolor sit amet consectetur
-          </h1>
-          <p className="mt-4 text-lg text-neutral-700">
-            Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua quis nostrud exercitation.
-          </p>
-        </div>
-      </section>
-
+    <main ref={containerRef} className="min-h-screen bg-white text-neutral-900">
       {/* STEPS + TEXT */}
-      <section className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8 py-24 px-6">
+      <section className="relative max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8 py-24 px-6">
+        {/* Sticky visual - always visible and scrubbable */}
+        <div className="hidden md:block fixed top-24 right-1/2 translate-x-1/2 z-0 w-[min(90vw,560px)] h-[min(90vw,560px)] pointer-events-none">
+          <StickyVisual 
+            driftProgress={driftProgress}
+            codeProgress={codeProgress}
+            bridgeProgress={bridgeProgress}
+            activeSection={activeSection}
+            scrollYProgress={scrollYProgress}
+          />
+        </div>
         <div className="space-y-32">
-          <div ref={refDrift} className="min-h-[40vh] flex items-center">
-            <StepCard title="Consectetur adipiscing" index={1}>
-              Ut enim ad minim veniam quis nostrud exercitation ullamco. Laboris nisi ut aliquip ex ea
-              commodo consequat duis aute.
-            </StepCard>
+          <div ref={driftRef} className="min-h-[40vh] flex items-center">
           </div>
 
-          <div ref={refCode} className="min-h-[40vh] flex items-center">
-            <StepCard title="Tempor incididunt" index={2}>
-              Excepteur sint occaecat cupidatat non proident sunt in culpa. Officia deserunt mollit anim id
-              est laborum sed perspiciatis.
-            </StepCard>
+          <div ref={codeRef} className="min-h-[40vh] flex items-center">
           </div>
 
-          <div ref={refBridge} className="min-h-[40vh] flex items-center">
-            <StepCard title="Dolore magna aliqua" index={3}>
-              Quis autem vel eum iure reprehenderit qui in ea voluptate. Velit esse quam nihil molestiae
-              consequatur vel illum dolore.
-            </StepCard>
-          </div>
-
-          <div ref={refStep4} className="min-h-[40vh] flex items-center">
-            <StepCard title="Adipiscing elit sed" index={4}>
-              Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit. Sed quia consequuntur
-              magni dolores eos qui ratione voluptatem sequi nesciunt.
-            </StepCard>
-          </div>
-
-          <div ref={refStep5} className="min-h-[40vh] flex items-center">
-            <StepCard title="Neque porro quisquam" index={5}>
-              At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis praesentium voluptatum
-              deleniti atque corrupti quos dolores et quas molestias excepturi.
-            </StepCard>
-          </div>
-
-          <div ref={refStep6} className="min-h-[40vh] flex items-center">
-            <StepCard title="Sint occaecati cupiditate" index={6}>
-              Temporibus autem quibusdam et aut officiis debitis aut rerum necessitatibus saepe eveniet ut et
-              voluptates repudiandae sint et molestiae non recusandae.
-            </StepCard>
+          <div ref={bridgeRef} className="min-h-[40vh] flex items-center">
           </div>
         </div>
 
@@ -112,11 +70,6 @@ export default function CoherenceScrolly() {
         <div className="hidden md:block" />
       </section>
 
-      <footer className="py-20 text-center">
-        <button className="bg-fuchsia-500 hover:bg-fuchsia-600 px-6 py-3 rounded-full font-semibold">
-          Lorem ipsum dolor sit
-        </button>
-      </footer>
     </main>
   );
 }
@@ -137,13 +90,25 @@ function StepCard({ title, children, index }: { title: string; children: React.R
 /* ---------- Sticky visual (SVG based) ---------- */
 /**
  * Behavior:
- * - active 0: clustered, soft glow
- * - active 1: drift => positions move outward and flicker (opacity pulses)
- * - active 2: code => some dots pulse brighter (individ. recovery)
- * - active 3: bridge => lines drawn connecting many dots + unified glow
+ * - Scroll-scrubbable animations based on scroll progress
+ * - driftProgress: 0-1 for drift animation (dots move from line to random positions)
+ * - codeProgress: 0-1 for code animation (dots arrange in circle)
+ * - bridgeProgress: 0-1 for bridge animation (lines connect dots)
  */
-function StickyVisual({ active }: { active: StepId }) {
-  // seed fixed positions (normalized 0..1). You can generate or load from JSON for variety.
+function StickyVisual({ 
+  driftProgress, 
+  codeProgress, 
+  bridgeProgress,
+  activeSection,
+  scrollYProgress
+}: { 
+  driftProgress: any;
+  codeProgress: any;
+  bridgeProgress: any;
+  activeSection: any;
+  scrollYProgress: any;
+}) {
+  // seed fixed positions (normalized 0..1). 8 dots total.
   const base = useMemo(
     () => [
       [0.35, 0.35],
@@ -154,8 +119,6 @@ function StickyVisual({ active }: { active: StepId }) {
       [0.35, 0.7],
       [0.72, 0.72],
       [0.25, 0.38],
-      [0.75, 0.55],
-      [0.5, 0.75],
     ],
     []
   );
@@ -163,29 +126,19 @@ function StickyVisual({ active }: { active: StepId }) {
   // map to screen coords inside SVG width/height
   const w = 520;
   const h = 520;
-
-  // helper to compute drift offset (when active === 1)
-  const driftFactor = active === 1 ? 1 : active > 1 ? 0.3 : 0;
-  // when active === 0 (hero) dots tightly clustered; when 1 driftFactor bigger; when 2 start coming back; when 3 connect
-  const activeIsDrifting = active === 1;
-  const activeIsCoding = active === 2;
-  const activeIsBridging = active === 3;
-  const activeIsStep4 = active === 4;
-  const activeIsStep5 = active === 5;
-  const activeIsStep6 = active === 6;
   
   // Center point for outward movement
   const centerX = 0.5;
   const centerY = 0.5;
 
   return (
-    <div className="pointer-events-none md:fixed md:top-24 md:right-1/2 md:translate-x-1/2 z-0 w-[min(90vw,560px)] h-[min(90vw,560px)] flex items-center justify-center">
+    <div className="pointer-events-none w-[min(90vw,560px)] h-[min(90vw,560px)] flex items-center justify-center">
       <svg viewBox={`0 0 ${w} ${h}`} width="100%" height="100%" role="img" aria-hidden>
         {/* soft background glow */}
         <defs>
           <radialGradient id="g" cx="50%" cy="45%">
-            <stop offset="0%" stopColor="#8b5cf6" stopOpacity={activeIsBridging || activeIsStep4 || activeIsStep5 || activeIsStep6 ? 0.14 : 0.08} />
-            <stop offset="60%" stopColor="#06b6d4" stopOpacity={activeIsBridging || activeIsStep4 || activeIsStep5 || activeIsStep6 ? 0.06 : 0.02} />
+            <stop offset="0%" stopColor="#8b5cf6" stopOpacity="0.08" />
+            <stop offset="60%" stopColor="#06b6d4" stopOpacity="0.02" />
             <stop offset="100%" stopColor="#000000" stopOpacity={0} />
           </radialGradient>
           <filter id="blur" x="-50%" width="200%" y="-50%" height="200%">
@@ -196,44 +149,70 @@ function StickyVisual({ active }: { active: StepId }) {
 
         <rect width={w} height={h} fill="transparent" />
 
+        {/* Background glow that intensifies during bridge */}
+        <motion.circle
+          cx={centerX * w}
+          cy={centerY * h}
+          r={250}
+          fill="url(#g)"
+          opacity={useTransform(bridgeProgress, [0, 1], [0.3, 0.6])}
+        />
+
         {/* lines (draw when bridging) */}
         <g>
-          <AnimatePresence>
-            {(activeIsBridging || activeIsStep4 || activeIsStep5 || activeIsStep6) &&
-              base.map((p1, i) =>
-                base.map((p2, j) => {
-                  if (j <= i) return null;
-                  const x1 = p1[0] * w;
-                  const y1 = p1[1] * h;
-                  const x2 = p2[0] * w;
-                  const y2 = p2[1] * h;
-                  // only draw some lines for clarity (every other pair)
-                  if ((i + j) % 3 !== 0) return null;
-                  const dashLen = Math.hypot(x2 - x1, y2 - y1);
-                  return (
-                    <motion.line
-                      key={`line-${i}-${j}`}
-                      x1={x1}
-                      y1={y1}
-                      x2={x2}
-                      y2={y2}
-                      stroke="#8b5cf6"
-                      strokeOpacity={0.08}
-                      strokeWidth={2}
-                      strokeLinecap="round"
-                      initial={{ pathLength: 0 }}
-                      animate={{ pathLength: 1, strokeOpacity: 0.18 }}
-                      transition={{ duration: 0.9, ease: "easeInOut" }}
-                      style={{ vectorEffect: "non-scaling-stroke" }}
-                    />
-                  );
-                })
-              )}
-          </AnimatePresence>
+          {base.map((p, i) => {
+                // Connect to adjacent dot (next in circle, wrapping around)
+                const nextIndex = (i + 1) % base.length;
+                
+                // Calculate circle positions for both dots
+                const circleRadius = 180;
+                const centerXPos = centerX * w;
+                const centerYPos = centerY * h;
+                const angle1 = (i / base.length) * 2 * Math.PI;
+                const angle2 = (nextIndex / base.length) * 2 * Math.PI;
+                const x1 = centerXPos + Math.cos(angle1) * circleRadius;
+                const y1 = centerYPos + Math.sin(angle1) * circleRadius;
+                const x2 = centerXPos + Math.cos(angle2) * circleRadius;
+                const y2 = centerYPos + Math.sin(angle2) * circleRadius;
+                
+                // Calculate the angle difference
+                let angleDiff = angle2 - angle1;
+                // Normalize to [-π, π]
+                if (angleDiff > Math.PI) angleDiff -= 2 * Math.PI;
+                if (angleDiff < -Math.PI) angleDiff += 2 * Math.PI;
+                
+                // Determine if we should use the large arc flag
+                const largeArcFlag = Math.abs(angleDiff) > Math.PI ? 1 : 0;
+                // Always sweep in the positive direction (clockwise)
+                const sweepFlag = 1;
+                
+                // Create circular arc using SVG arc command (A)
+                // A rx ry x-axis-rotation large-arc-flag sweep-flag x y
+                const pathData = `M ${x1} ${y1} A ${circleRadius} ${circleRadius} 0 ${largeArcFlag} ${sweepFlag} ${x2} ${y2}`;
+                
+                const pathLength = useTransform(bridgeProgress, [0, 1], [0, 1]);
+                const strokeOpacity = useTransform(bridgeProgress, [0, 1], [0, 0.6]);
+                
+                return (
+                  <motion.path
+                    key={`arc-${i}-${nextIndex}`}
+                    d={pathData}
+                    fill="none"
+                    stroke="#808080"
+                    strokeWidth={6}
+                    strokeLinecap="round"
+                    style={{ 
+                      vectorEffect: "non-scaling-stroke",
+                      pathLength,
+                      strokeOpacity,
+                    }}
+                  />
+                );
+              })}
         </g>
 
         {/* dots */}
-        <g filter={activeIsBridging || activeIsStep4 || activeIsStep5 || activeIsStep6 ? "url(#blur)" : undefined}>
+        <g>
           {base.map((p, i) => {
             const cx = p[0] * w;
             const cy = p[1] * h;
@@ -245,108 +224,202 @@ function StickyVisual({ active }: { active: StepId }) {
             const normalizedX = distance > 0 ? vectorX / distance : 0;
             const normalizedY = distance > 0 ? vectorY / distance : 0;
             
-            // Apply outward movement when drifting, keep position in coding step
-            const driftDistance = activeIsDrifting || activeIsCoding || activeIsStep4 || activeIsStep5 || activeIsStep6 ? 80 : 0;
-            const dx = normalizedX * driftDistance;
-            const dy = normalizedY * driftDistance;
-            const finalX = cx + dx;
-            const finalY = cy + dy;
-
-            // flicker variations - random delay per dot for staggered effect
-            const flickerDelay = i * 0.08;
-            const baseOpacity = active === 0 ? 1 : activeIsDrifting ? 0.6 : activeIsCoding ? 1 : activeIsStep4 ? 0.8 : activeIsStep5 ? 0.9 : activeIsStep6 ? 0.95 : 0.95;
-            const scale = active === 0 ? 1.15 : activeIsDrifting ? 0.85 : activeIsCoding ? 1.2 : activeIsStep4 ? 1.0 : activeIsStep5 ? 1.05 : activeIsStep6 ? 1.1 : 1.1;
+            // For drift animation: start dots in a horizontal line, then move to random positions
+            const linePadding = 0.15;
+            const lineWidth = w * (1 - 2 * linePadding);
+            const lineStartX = base.length > 1 
+              ? w * linePadding + (i / (base.length - 1)) * lineWidth 
+              : w * 0.5;
+            const lineStartY = h * 0.5;
+            
+            // Code/Bridge: random positions -> circle
+            const circleRadius = 180;
+            const angle = (i / base.length) * 2 * Math.PI;
+            const circleX = centerX * w + Math.cos(angle) * circleRadius;
+            const circleY = centerY * h + Math.sin(angle) * circleRadius;
+            
+            // Calculate drift end position
+            const driftEndX = cx + normalizedX * 80;
+            const driftEndY = cy + normalizedY * 80;
+            
+            // Combine transforms: drift phase uses driftX/Y, then transitions to circle
+            const driftXValue = useTransform(driftProgress, [0, 1], [lineStartX, driftEndX]);
+            const driftYValue = useTransform(driftProgress, [0, 1], [lineStartY, driftEndY]);
+            
+            // Final position: blend between drift end and circle based on codeProgress
+            const finalX = useTransform(
+              [driftXValue, codeProgress],
+              ([driftX, code]: number[]) => {
+                return driftX + (circleX - driftX) * code;
+              }
+            );
+            
+            const finalY = useTransform(
+              [driftYValue, codeProgress],
+              ([driftY, code]: number[]) => {
+                return driftY + (circleY - driftY) * code;
+              }
+            );
+            
+            // Opacity: fade in during drift
+            const opacity = useTransform(driftProgress, [0, 0.2], [0, 1], { clamp: true });
+            
+            // Apply blur filter during bridge
+            const shouldBlur = useTransform(bridgeProgress, [0, 1], [0, 1]);
 
             return (
               <motion.g
                 key={`dot-${i}`}
-                initial={{ opacity: 0, scale: 0.6 }}
-                animate={{
-                  opacity: baseOpacity,
-                  x: finalX - cx,
-                  y: finalY - cy,
-                  scale,
-                }}
-                transition={{
-                  delay: i * 0.02,
-                  duration: 0.8,
-                  type: "spring",
-                  bounce: 0.15,
+                style={{
+                  x: useTransform(finalX, (x) => x - cx),
+                  y: useTransform(finalY, (y) => y - cy),
+                  opacity,
+                  filter: useTransform(shouldBlur, (blur) => blur > 0.5 ? "url(#blur)" : "none"),
                 }}
               >
-                {/* outer halo */}
-                <motion.circle
-                  cx={cx}
-                  cy={cy}
-                  r={14}
-                  fill="none"
-                  stroke="#8b5cf6"
-                  strokeOpacity={active === 0 ? 0.2 : activeIsBridging ? 0.16 : activeIsStep4 || activeIsStep5 || activeIsStep6 ? 0.12 : 0.06}
-                  strokeWidth={active === 0 ? 12 : activeIsBridging ? 18 : activeIsStep4 || activeIsStep5 || activeIsStep6 ? 10 : 8}
-                  animate={
-                    activeIsDrifting
-                      ? { 
-                          strokeOpacity: [0.12, 0.01, 0.1, 0.02, 0.08, 0.01, 0.02],
-                        }
-                      : activeIsCoding
-                      ? {
-                          strokeOpacity: [0.06, 0.01, 0.06, 0.02, 0.06, 0.01, 0.18],
-                        }
-                      : activeIsStep4 || activeIsStep5 || activeIsStep6
-                      ? {
-                          strokeOpacity: [0.12, 0.08, 0.14, 0.06, 0.12],
-                        }
-                      : {}
-                  }
-                  transition={{
-                    duration: activeIsDrifting || activeIsCoding || activeIsStep4 || activeIsStep5 || activeIsStep6 ? 1.8 : 1.2,
-                    repeat: activeIsStep4 || activeIsStep5 || activeIsStep6 ? Infinity : 0,
-                    repeatType: "loop",
-                    delay: activeIsDrifting || activeIsCoding || activeIsStep4 || activeIsStep5 || activeIsStep6 ? flickerDelay : 0,
-                    ease: [0.45, 0.05, 0.55, 0.95],
-                  }}
-                />
-
-                {/* main dot */}
-                <motion.circle
-                  cx={cx}
-                  cy={cy}
-                  r={6.6}
-                  fill="#8b5cf6"
+                {/* SVG ellipse image */}
+                <motion.image
+                  href="/ellipse-66.svg"
+                  x={cx - 15}
+                  y={cy - 15.5}
+                  width={30}
+                  height={31}
                   style={{ transformOrigin: `${cx}px ${cy}px` }}
-                  animate={
-                    activeIsDrifting
-                      ? { 
-                          opacity: [1, 0.15, 1, 0.2, 0.95, 0.1, 0.25],
-                          scale: [1, 0.7, 1.05, 0.65, 1.1, 0.6, 0.75] 
-                        }
-                      : activeIsCoding
-                      ? { 
-                          opacity: [0.25, 0.1, 0.3, 0.15, 0.35, 0.1, 1],
-                          scale: [0.75, 0.6, 0.8, 0.65, 0.85, 0.6, 1.2] 
-                        }
-                      : activeIsBridging
-                      ? { opacity: [0.9, 1, 0.95], scale: [1.05, 1.18, 1.06] }
-                      : activeIsStep4
-                      ? { opacity: [0.8, 1, 0.9], scale: [1.0, 1.15, 1.05] }
-                      : activeIsStep5
-                      ? { opacity: [0.85, 1, 0.92], scale: [1.05, 1.2, 1.08] }
-                      : activeIsStep6
-                      ? { opacity: [0.9, 1, 0.95], scale: [1.1, 1.25, 1.12] }
-                      : { opacity: 1, scale: 1.02 }
-                  }
-                  transition={{
-                    duration: activeIsDrifting || activeIsCoding ? 1.8 : 1.2,
-                    repeat: activeIsDrifting || activeIsCoding ? 0 : activeIsBridging || activeIsStep4 || activeIsStep5 || activeIsStep6 ? Infinity : 0,
-                    repeatType: "loop",
-                    delay: activeIsDrifting || activeIsCoding ? flickerDelay : i * 0.05,
-                    ease: activeIsDrifting || activeIsCoding ? [0.45, 0.05, 0.55, 0.95] : "easeInOut",
-                  }}
                 />
               </motion.g>
             );
           })}
         </g>
+
+        {/* Text that reveals during drift animation */}
+        <motion.g
+          opacity={useTransform(scrollYProgress, [0, 0.2, 0.33], [0, 1, 0], { clamp: true })}
+        >
+            <text
+              x={centerX * w}
+              y={h * 0.4}
+              textAnchor="middle"
+              dominantBaseline="middle"
+              fill="#8b5cf6"
+              fontSize="20"
+              fontWeight="500"
+              style={{ pointerEvents: "none" }}
+            >
+              Strategy without alignment is intent.
+            </text>
+            <text
+              x={centerX * w}
+              y={h * 0.4 + 28}
+              textAnchor="middle"
+              dominantBaseline="middle"
+              fill="#8b5cf6"
+              fontSize="20"
+              fontWeight="500"
+              style={{ pointerEvents: "none" }}
+            >
+              Alignment without trust is unstable.
+            </text>
+            <text
+              x={centerX * w}
+              y={h * 0.4 + 56}
+              textAnchor="middle"
+              dominantBaseline="middle"
+              fill="#8b5cf6"
+              fontSize="20"
+              fontWeight="500"
+              style={{ pointerEvents: "none" }}
+            >
+              And trust that doesn't deliver results is just optimism.
+            </text>
+        </motion.g>
+
+        {/* Text and button that reveals during code animation */}
+        <motion.g
+          opacity={useTransform(scrollYProgress, [0.33, 0.5, 0.66], [0, 1, 0], { clamp: true })}
+        >
+            <text
+              x={centerX * w}
+              y={h * 0.4}
+              textAnchor="middle"
+              dominantBaseline="middle"
+              fill="#8b5cf6"
+              fontSize="24"
+              fontWeight="600"
+              style={{ pointerEvents: "none" }}
+            >
+              We call this the Executive Drift.
+            </text>
+            <text
+              x={centerX * w}
+              y={h * 0.4 + 36}
+              textAnchor="middle"
+              dominantBaseline="middle"
+              fill="#8b5cf6"
+              fontSize="24"
+              fontWeight="600"
+              style={{ pointerEvents: "none" }}
+            >
+              And it's Expensive.
+            </text>
+            <foreignObject
+              x={centerX * w - 120}
+              y={h * 0.4 + 60}
+              width="240"
+              height="50"
+            >
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%', height: '100%' }}>
+                <button
+                  style={{
+                    padding: '12px 32px',
+                    borderRadius: '9999px',
+                    backgroundColor: '#8b5cf6',
+                    color: 'white',
+                    border: 'none',
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    fontFamily: 'inherit',
+                    transition: 'background-color 0.2s',
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#7c3aed'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#8b5cf6'}
+                >
+                  Test your Drift now!
+                </button>
+              </div>
+            </foreignObject>
+        </motion.g>
+
+        {/* Text that reveals during bridge animation */}
+        <motion.g
+          opacity={useTransform(scrollYProgress, [0.66, 0.8, 1], [0, 1, 1], { clamp: true })}
+        >
+            <text
+              x={centerX * w}
+              y={h * 0.35}
+              textAnchor="middle"
+              dominantBaseline="middle"
+              fill="#8b5cf6"
+              fontSize="18"
+              fontWeight="500"
+              style={{ pointerEvents: "none" }}
+            >
+              <tspan x={centerX * w} dy="0">We eliminate drift by hardwiring alignment,</tspan>
+              <tspan x={centerX * w} dy="24">trust, and execution beneath the surface.</tspan>
+            </text>
+            <text
+              x={centerX * w}
+              y={h * 0.35 + 60}
+              textAnchor="middle"
+              dominantBaseline="middle"
+              fill="#8b5cf6"
+              fontSize="24"
+              fontWeight="600"
+              style={{ pointerEvents: "none" }}
+            >
+              Durable, Measurable, Unshakable.
+            </text>
+        </motion.g>
       </svg>
     </div>
   );
